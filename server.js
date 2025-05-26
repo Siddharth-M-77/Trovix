@@ -33,7 +33,7 @@ app.use(morgan("dev"));
 
 app.use(
   cors({
-    origin: ["http:192.168.1.19:6017", "http://localhost:6017"], 
+    origin: ["http:192.168.1.19:6017", "http://localhost:6017"],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
@@ -44,7 +44,6 @@ app.use(
 app.use("/api/users", UserRouter);
 app.use("/api/admin", AdminRouter);
 
-// Connect DB and Start Server
 connectToDB()
   .then(() => {
     console.log("✅ MongoDB Connected Successfully");
