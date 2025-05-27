@@ -663,21 +663,31 @@ export const allWithdrwal = async (req, res) => {
 export const userTopup = async (req, res) => {
   try {
     const { userId, amount } = req.body;
-    const admin = req.admin;
-    if (!admin) {
+
+    // Validate admin authentication
+    if (!req.admin) {
       return res.status(403).json({
-        message: "Unauthorized",
+        message: "Unauthorized access",
         success: false,
       });
     }
 
-    if (!userId || !amount) {
+    // Validate input
+    if (!userId || typeof userId !== 'string') {
       return res.status(400).json({
-        message: "User ID and amount are required",
+        message: "Valid userId is required",
         success: false,
       });
     }
-    const user = await UserModel.findOne({ username: userId });
+
+    if (!amount || typeof amount !== 'number' || amount <= 0) {
+      return res.status(400).json({
+        message: "Amount must be greater than 0 ",
+        success: false,
+      });
+    }
+
+    const user = await UserModel.findOne({ username: userId }).select('_id totalInvestment');
     if (!user) {
       return res.status(404).json({
         message: "User not found",
@@ -685,49 +695,59 @@ export const userTopup = async (req, res) => {
       });
     }
 
-    if (amount <= 0) {
-      return res.status(400).json({
-        message: "Amount must be greater than zero",
-        success: false,
+    const session = await UserModel.startSession();
+    try {
+      await session.withTransaction(async () => {
+        // Generate transaction hash
+        const txHash = await generateTxHash();
+
+        await Investment.create([{
+          userId: user._id,
+          investmentAmount: amount,
+          investmentDate: new Date(),
+          txResponse: txHash,
+        }], { session });
+
+        await Topup.create([{
+          userId: user._id,
+          amount,
+          txResponse: txHash,
+        }], { session });
+
+        user.totalInvestment = Number(user.totalInvestment || 0) + amount;
+        await user.save({ session });
       });
+
+      return res.status(200).json({
+        message: "Topup successful",
+        success: true,
+        data: {
+          userId: user._id,
+          amount,
+          newBalance: user.totalInvestment,
+        },
+      });
+    } finally {
+      session.endSession();
     }
 
-    const txHash = await generateTxHash();
-    await Investment.create({
-      userId: user._id,
-      investmentAmount: amount,
-      investmentDate: new Date(),
-      txResponse: txHash,
-    });
-
-    await Topup.create({
-      userId: user._id,
-      amount: amount,
-      txResponse: txHash,
-    });
-    console.log("investment created");
-
-    user.totalInvestment += Number(amount);
-    user.save()
-    return res.status(200).json({
-      message: "Topup successful",
-      success: true,
-      data: {
-        userId: user._id,
-        amount: amount,
-      },
-    });
-
   } catch (error) {
+    console.error('Topup error:', error);
+
     return res.status(500).json({
-      message: error.message || "Server Error",
+      message: error.message || "Internal server error",
       success: false,
     });
-
   }
-}
+};
 export const getAllTopups = async (req, res) => {
   try {
+    const userId = req.admin;
+    if (!userId) {
+      return res.status(404).json({
+        message: "Unauthorized",
+      });
+    }
     const topups = await Topup.find({}).populate("userId", "username");
     if (!topups || topups.length === 0) {
       return res.status(200).json({

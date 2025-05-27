@@ -7,6 +7,7 @@ export const distributeDailyROI = async () => {
     const investments = await Investment.find({});
 
     for (const invest of investments) {
+      console.log(invest.userId, "invest.userId");
       const existingRois = await Aroi.find({ investmentId: invest._id });
 
       if (existingRois.length < 100) {

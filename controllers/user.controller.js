@@ -36,8 +36,8 @@ const findAvailablePosition = async (parentId) => {
 };
 export const userRegister = async (req, res) => {
   try {
-    const { walletAddress, referredBy, email, password } = req.body;
-    if (!walletAddress || !email || !password) {
+    const { walletAddress, referredBy, email, name } = req.body;
+    if (!walletAddress || !email || !name) {
       return res.status(400).json({
         success: false,
         message: "All fields are required",
@@ -205,22 +205,23 @@ export const userLogout = async (req, res) => {
 };
 export const investment = async (req, res) => {
   try {
-    const { investmentAmount, txResponse } = req.body;
+    const { investmentAmount, txResponse, adminWalletAddress, userWalletAddress } = req.body;
     const userId = req.user._id;
+    console.log(req.body)
 
-    if (!userId || !investmentAmount || !txResponse) {
+    if (!userId || !investmentAmount || !txResponse || !adminWalletAddress || !userWalletAddress) {
       return res.status(400).json({
         success: false,
         message: "All fields are required",
       });
     }
 
-    if (investmentAmount < 100) {
-      return res.status(400).json({
-        success: false,
-        message: "Minimum investment is ₹100 $",
-      });
-    }
+    // if (investmentAmount < 100) {
+    //   return res.status(400).json({
+    //     success: false,
+    //     message: "Minimum investment is ₹100 $",
+    //   });
+    // }
 
     const user = await UserModel.findById(userId);
     if (!user) {
@@ -243,6 +244,8 @@ export const investment = async (req, res) => {
       investmentAmount,
       txResponse,
       investmentDate: new Date(),
+      adminWalletAddress,
+      userWalletAddress
     });
     user.investments.push(investment._id);
     user.totalInvestment += Number(investmentAmount);

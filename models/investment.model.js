@@ -16,6 +16,14 @@ const investmentSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+    adminWalletAddress: {
+      type: String,
+      required: true,
+    },
+    userWalletAddress: {
+      type: String,
+      required: true,
+    },
     txResponse: {
       type: String,
       required: true,
